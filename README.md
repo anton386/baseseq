@@ -1,4 +1,4 @@
-# baseseq - Tool to generate haplotypes from correspondng BAsE-Seq libraries
+# baseseq - Tool to generate haplotypes from BAsE-Seq libraries
 
 ## Acknowledgement
 Hong et. al. - BAsE-Seq: a method for obtaining long viral haplotypes from short sequence reads
