@@ -96,7 +96,7 @@ class BaseSeq(Helper):
         self.bc = BarCode(self.bam)
         sys.stderr.write("[%s] Starting procedure to split BAM by barcode\n" % (self.get_time(),))
 
-        self.bc.split_bam_into_barcodes(self.out)
+        self.bc.split_bam_into_barcodes(self.ref, self.out)
         sys.stderr.write("[%s] Finished splitting BAM by barcode id\n" % (self.get_time(),))
         
 
@@ -295,9 +295,10 @@ if __name__ == "__main__":
 
     elif method == "split_bam_by_barcode":
         bam = sys.argv[2]
-        out = sys.argv[3]
+        ref = sys.argv[3]
+        out = sys.argv[4]
         
-        bs = BaseSeq(bam, out=out)
+        bs = BaseSeq(bam, ref=ref, out=out)
         bs.split_bam_by_barcode()
 
     elif method == "baseseq":

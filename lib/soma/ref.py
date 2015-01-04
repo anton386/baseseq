@@ -17,3 +17,6 @@ class Reference(object):
                     self.id = g.strip("\r\n").lstrip(">").strip()
                 else:
                     self.sequence += g.strip("\r\n").strip().upper()
+
+    def get_short_id(self):
+        return self.id.split(" ")[0]

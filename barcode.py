@@ -222,7 +222,7 @@ class BarCode(Helper):
         
         out.close()
 
-    def split_bam_into_barcodes(self, prefix=""):
+    def split_bam_into_barcodes(self, ref, prefix=""):
 
         if not prefix:
             prefix = ""
@@ -237,7 +237,12 @@ class BarCode(Helper):
                 
                 current_barcode = barcode
                 f_out = self.get_split_bam_name(prefix, current_barcode)
-                out = pysam.Samfile(f_out, "wb", template=self.bam)
+
+                header = {"HD": {"VN": "1.0", "SO": "coordinate"},
+                          "SQ": [{"LN": len(ref.sequence), "SN": ref.get_short_id()}],
+                          "RG": [{"ID": current_barcode, "SM": current_barcode, "PL": "Illumina"}]}
+                
+                out = pysam.Samfile(f_out, "wb", header=header)
                 
             elif (current_barcode != "") and (current_barcode != barcode):
 
@@ -245,8 +250,22 @@ class BarCode(Helper):
 
                 current_barcode = barcode
                 f_out = self.get_split_bam_name(prefix, current_barcode)
-                out = pysam.Samfile(f_out, "wb", template=self.bam)
-    
+
+                header = {"HD": {"VN": "1.0", "SO": "coordinate"},
+                          "SQ": [{"LN": len(ref.sequence), "SN": ref.get_short_id()}],
+                          "RG": [{"ID": current_barcode, "SM": current_barcode, "PL": "Illumina"}]}
+                
+                out = pysam.Samfile(f_out, "wb", header=header)
+
+            new_tags = []
+            for tag in samy.tags:
+                if tag[0] == "RG":
+                    new_tags.append(("RG", barcode))
+                else:
+                    new_tags.append(tag)
+
+            samy.tags = tuple(new_tags)
+            
             out.write(samy)
 
         out.close()
