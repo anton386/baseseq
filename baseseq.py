@@ -21,7 +21,8 @@ class BaseSeq(Helper):
                  haplotype_distribution=None,
                  vcf=None,
                  chain=None,
-                 crossmap=None):
+                 crossmap=None,
+                 export=None):
         
         self.bam = bam
         self.barcodes = barcodes
@@ -36,6 +37,7 @@ class BaseSeq(Helper):
         self.vcf = vcf
         self.chain = chain
         self.crossmap = crossmap
+        self.export = export
     
     def get_barcodes(self):
         # simple approach - align, take soft-clipped, and use the arbitrary 20 bases
@@ -96,7 +98,7 @@ class BaseSeq(Helper):
         self.bc = BarCode(self.bam)
         sys.stderr.write("[%s] Starting procedure to split BAM by barcode\n" % (self.get_time(),))
 
-        self.bc.split_bam_into_barcodes(self.ref, self.out)
+        self.bc.split_bam_into_barcodes(self.ref, self.out, self.export)
         sys.stderr.write("[%s] Finished splitting BAM by barcode id\n" % (self.get_time(),))
         
 
@@ -297,8 +299,9 @@ if __name__ == "__main__":
         bam = sys.argv[2]
         ref = sys.argv[3]
         out = sys.argv[4]
+        export = sys.argv[5] if sys.argv[5] else "bam"
         
-        bs = BaseSeq(bam, ref=ref, out=out)
+        bs = BaseSeq(bam, ref=ref, out=out, export=export)
         bs.split_bam_by_barcode()
 
     elif method == "baseseq":

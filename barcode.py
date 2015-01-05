@@ -1,5 +1,6 @@
 import sys
 import re
+import gzip
 
 import matplotlib
 matplotlib.use("Agg")
@@ -222,7 +223,16 @@ class BarCode(Helper):
         
         out.close()
 
-    def split_bam_into_barcodes(self, ref, prefix=""):
+
+    def split_bam_into_barcodes(self, ref, prefix="", export="bam"):
+
+        if export == "bam":
+            self.split_bam_by_barcodes_into_bam(ref, prefix)
+        elif export == "fastq":
+            self.split_bam_by_barcodes_into_fastq(ref, prefix)
+
+
+    def split_bam_by_barcodes_into_bam(self, reg, prefix=""):
 
         if not prefix:
             prefix = ""
@@ -236,7 +246,7 @@ class BarCode(Helper):
             if current_barcode == "":
                 
                 current_barcode = barcode
-                f_out = self.get_split_bam_name(prefix, current_barcode)
+                f_out = self.get_split_bam_name(prefix, current_barcode, "bam")
 
                 header = {"HD": {"VN": "1.0", "SO": "coordinate"},
                           "SQ": [{"LN": len(ref.sequence), "SN": ref.get_short_id()}],
@@ -249,7 +259,7 @@ class BarCode(Helper):
                 out.close()
 
                 current_barcode = barcode
-                f_out = self.get_split_bam_name(prefix, current_barcode)
+                f_out = self.get_split_bam_name(prefix, current_barcode, "bam")
 
                 header = {"HD": {"VN": "1.0", "SO": "coordinate"},
                           "SQ": [{"LN": len(ref.sequence), "SN": ref.get_short_id()}],
@@ -270,9 +280,76 @@ class BarCode(Helper):
 
         out.close()
 
-    def get_split_bam_name(self, prefix, barcode):
+
+    def split_bam_by_barcodes_into_fastq(self, reg, prefix=""):
+
+        if not prefix:
+            prefix = ""
+
+        current_barcode = ""
+        prev_qname = ""
+        paired1 = False
+        paired2 = False
         
-        return prefix + barcode + ".bam"
+        for samy in self.bam:
+
+            barcode = samy.qname.split("|")[0].replace("BC:", "")
+
+            if current_barcode == "":
+                
+                current_barcode = barcode
+                f_out_1 = self.get_split_bam_name(prefix, current_barcode, "fastq") + "_1.fq.gz"
+                f_out_2 = self.get_split_bam_name(prefix, current_barcode, "fastq") + "_2.fq.gz"
+                
+                out_1 = gzip.open(f_out_1, "wb")
+                out_2 = gzip.open(f_out_2, "wb")
+                
+            elif (current_barcode != "") and (current_barcode != barcode):
+
+                out_1.close()
+                out_2.close()
+
+                current_barcode = barcode
+                f_out_1 = self.get_split_bam_name(prefix, current_barcode, "fastq") + "_1.fq.gz"
+                f_out_2 = self.get_split_bam_name(prefix, current_barcode, "fastq") + "_2.fq.gz"
+                
+                out_1 = gzip.open(f_out_1, "wb")
+                out_2 = gzip.open(f_out_2, "wb")
+
+            if samy.qname != prev_qname:
+                store1 = "\n".join(["@" + samy.qname,
+                                    samy.query,
+                                    "+",
+                                    samy.qqual]) + "\n"
+                
+                paired1 = False
+                paired2 = False
+                prev_qname = samy.qname
+            else:
+                store2 = "\n".join(["@" + samy.qname,
+                                    samy.query,
+                                    "+",
+                                    samy.qqual]) + "\n"
+            
+            if samy.is_read1:
+                paired1 = True
+            elif samy.is_read2:
+                paired2 = True
+
+            if paired1 and paired2:
+                out_1.write(store1)
+                out_2.write(store2)
+
+        out_1.close()
+        out_2.close()
+
+
+    def get_split_bam_name(self, prefix, barcode, export):
+
+        if export == "bam":
+            return prefix + barcode + ".bam"
+        elif export == "fastq":
+            return prefix + barcode
 
     
     def write_barcodes(self, out):
