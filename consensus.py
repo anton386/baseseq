@@ -51,11 +51,19 @@ class Consensus(Helper):
 
     def generate_base_error_table(self, no_of_indels, e_indel=45):
         p_indel = self.phred_to_pval(e_indel)
-        l_indel = self.pval_to_log(p_indel)
+        l_indel = self.pval_to_log(p_indel/no_of_indels)
         error_table = {}
         for i in range(1, 42):
-            p_base = ((self.phred_to_pval(i) - no_of_indels*p_indel)/3)  # uniform base error for indel
-            l_base = self.pval_to_log(p_base)
+            p_base = ((self.phred_to_pval(i) - p_indel)/3)  # uniform base error for indel
+            try:
+                l_base = self.pval_to_log(p_base)
+            except ValueError:
+                print no_of_indels
+                print i
+                print p_base
+                print l_base
+                raise ValueError
+            
             error_table[i] = {"A": l_base, "T": l_base, "G": l_base, "C": l_base,
                               "I": l_indel, "D": l_indel}
 
@@ -63,11 +71,19 @@ class Consensus(Helper):
 
     def generate_indel_error_table(self, no_of_indels, e_indel=45):
         p_indel = self.phred_to_pval(e_indel)
-        l_indel = self.pval_to_log(p_indel)
+        l_indel = self.pval_to_log(p_indel/(no_of_indels-1))
         error_table = {}
         for i in range(1, 42):
-            p_base = ((self.phred_to_pval(i) - ((no_of_indels*p_indel)-1))/4)  # uniform base error for indel
-            l_base = self.pval_to_log(p_base)
+            p_base = ((self.phred_to_pval(i) - p_indel)/4)  # uniform base error for indel
+            try:
+                l_base = self.pval_to_log(p_base)
+            except ValueError:
+                print no_of_indels
+                print i
+                print p_base
+                print l_base
+                raise ValueError
+            
             error_table[i] = {"A": l_base, "T": l_base, "G": l_base, "C": l_base,
                               "I": l_indel, "D": l_indel}
 
@@ -124,6 +140,9 @@ class Consensus(Helper):
 
                 self.check_status_of_barcodes(no_of_barcodes)
                 no_of_barcodes += 1
+
+                if no_of_barcodes == 10:
+                    return
                 
                 current_barcode = barcode
                 consensus_matrix = self.create_log_matrix()
@@ -188,11 +207,10 @@ class Consensus(Helper):
 
                             # remove INS and replace with new allele
                             del consensus_quality[position]["INS"]
+                            consensus_quality[position][allele] = [q]
+                            
                         except KeyError:
-                            try:
-                                consensus_quality[position][allele].append(q)
-                            except KeyError:
-                                consensus_quality[position][allele] = [q]
+                            consensus_quality[position][allele].append(q)
                         
                         consensus_coverage[position] += 1
                     
@@ -331,7 +349,10 @@ class Consensus(Helper):
                         consensus_matrix[position][allele] += self.log_table[q]
 
                         for other in all_other_base[allele]:
-                            consensus_matrix[position][other] += self.indel_error_table[q][other]
+                            if len(other) > 1:
+                                consensus_matrix[position][other] += self.indel_error_table[q]["I"]
+                            else:
+                                consensus_matrix[position][other] += self.indel_error_table[q][other]
 
 
     def create_consensus(self, consensus_matrix, coverage, barcode,
@@ -383,7 +404,10 @@ class Consensus(Helper):
         
         f_out = open(consensus, "w")
         
-        output = []
+        output_dict = {}
+        output_list = []
+        structure_list = []
+        structure_ins = {}
         
         # consensus - count method
 
@@ -392,28 +416,15 @@ class Consensus(Helper):
         
         genomes = self.consensus_genomes.values()  # 0-based
 
-        # work on indels first
-        # accumulate insertions for simple consensus counting
-        consensus_indels = {}  # 1-based
-        self.inferred_consensus_indels = {}
-        for barcode, v in self.consensus_indels.items():  # 1-based
-            for pos, cindel in v.items():
-                try:
-                    consensus_indels[pos]
-                except KeyError:
-                    consensus_indels[pos] = {}
-                
-                try:
-                    consensus_indels[pos][cindel] += 1
-                except KeyError:
-                    consensus_indels[pos][cindel] = 1
-
         # next, work on the rest
-        for i in range(length_of_genome):
-
-            consensus = {"A": 0, "T": 0, "G": 0, "C": 0, "I": 0, "D": 0, "N": 0}
+        for i in range(1, length_of_genome+1):
+            
+            consensus = {}
             for j in range(no_of_barcodes):
-                consensus[genomes[j][i]] += 1
+                try:
+                    consensus[genomes[j][i]] += 1
+                except KeyError:
+                    consensus[genomes[j][i]] = 1
 
             consensus_base = "N"
             consensus_count = 0
@@ -421,55 +432,50 @@ class Consensus(Helper):
                 if c > consensus_count:
                     consensus_base = b
                     consensus_count = c
-
-            # get the correct indel, otherwise, change consensus to "N"
-            # since there is no indel here
-            if consensus_base == "I":
-                max_indel = None
-                max_count = 0
-                try:
-                    for k, l in consensus_indels[i+1].items():  # i is 0-based
-                        if max_count < l:
-                            max_indel = k
-                            max_count = l
-                    self.inferred_consensus_indels[i+1] = k
-                except KeyError:
-                    consensus_base = "N"
-                
             
-            output.append(consensus_base)
+            output_dict[i] = consensus_base
 
+        for pos, base in sorted(output_dict.items(), key=lambda q: q[0]):
+            if base == "D":
+                structure_list.append(base)
+            elif len(base) > 1:
+                structure_list.append("I")
+                structure_ins[pos] = base
+                output_list.append(base)
+            else:
+                structure_list.append(base)
+                output_list.append(base)
         
-        self.inferred_consensus = "".join(output)
-        self.inferred_fconsensus = self.adjust_consensus(self.inferred_consensus_indels)
+        self.inferred_consensus = "".join(output_list)
+        self.inferred_structure = {"sequence": "".join(structure_list),
+                                   "ins": structure_ins}
         
         f_out.write(">%s\n%s\n" % (consensus_id, self.inferred_consensus))
 
         f_out.close()
-
-
-    def adjust_consensus(self, indels):
-        consensus = {}
-        for pos, base in enumerate(self.inferred_consensus):
-            if base == "D":
-                pass
-            elif base == "I":
-                consensus[pos+1] = indels[pos+1]  # pos is 0-based
-            else:
-                consensus[pos+1] = base
-        
-        ordered = []
-        for k, v in sorted(consensus.items(), key=lambda q: q[0]):
-            ordered.append(v)
-        
-        return "".join(ordered)
         
 
     def output_consensus_genomes(self, out):
         f_out = open(out, "w")
 
-        for barcode, genome in self.consensus_genomes.items():
-            f_out.write(">%s\n%s\n" % (barcode, "".join(genome)))
+        for barcode, genome in sorted(self.consensus_genomes.items(), key=lambda q: q[0]):
+
+            seq = []
+            qual = []
+            for pos, base in sorted(genome.items(), key=lambda q: q[0]):
+                if base == "D":
+                    pass
+                elif len(base) > 1:
+                    seq.append(base)
+                    for i in range(len(base)):
+                        qual.append(str(self.consensus_posteriors[barcode][pos]))
+                else:
+                    seq.append(base)
+                    qual.append(str(self.consensus_posteriors[barcode][pos]))
+                
+            f_out.write("@%s\n%s\n+\n%s\n" % (barcode,
+                                              "".join(seq),
+                                              " ".join(qual)))
 
         f_out.close()
 
@@ -478,8 +484,14 @@ class Consensus(Helper):
         
         total = 0
         freq_distribution = {}
-        for genome in self.consensus_genomes.values():
-            haplotype = self.get_haplotype(genome)
+
+        f_out.write("##ListOfHaplotypes\n")
+        
+        for barcode, genome in sorted(self.consensus_genomes.items(), key=lambda q: q[0]):
+            haplotype = self.get_haplotype(self.get_genome(genome))
+
+            f_out.write("%s\t%s\n" % (barcode, haplotype))
+            
             try:
                 freq_distribution[haplotype] += 1
             except KeyError:
@@ -487,6 +499,7 @@ class Consensus(Helper):
 
             total += 1
 
+        f_out.write("##FrequencyDistribution\n")
         for haplotype, counts in sorted(freq_distribution.items(), key=lambda q: q[1], reverse=True):
             f_out.write("%s\t%s\t%s\n" % (haplotype, counts, float(counts)/float(total)))
 
@@ -551,14 +564,24 @@ class Consensus(Helper):
     
     def get_haplotype(self, genome):
         haplotype = []
-        for no, (i, j) in enumerate(zip(self.inferred_consensus, genome)):
+        for no, (i, j) in enumerate(zip(self.inferred_structure["sequence"], genome)):
             if i != j:
                 if i == "N":
                     continue
+                elif i == "I":
+                    if len(j) == 1 and j != "N":
+                        haplotype.append((no+1, j))
                 elif j != "N":
                     haplotype.append((no+1, j))
         
         return tuple(haplotype)
+
+    def get_genome(self, genome):
+        output = []
+        for pos, base in sorted(genome.items(), key=lambda q: q[0]):
+            output.append(base)
+        
+        return output
 
         
     def calculate_max_posterior(self, min_value, matrix):
