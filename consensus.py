@@ -141,8 +141,8 @@ class Consensus(Helper):
                 self.check_status_of_barcodes(no_of_barcodes)
                 no_of_barcodes += 1
 
-                if no_of_barcodes == 10:
-                    return
+                ##DEBUG if no_of_barcodes == 100:
+                ##DEBUG     return
                 
                 current_barcode = barcode
                 consensus_matrix = self.create_log_matrix()
