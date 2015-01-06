@@ -576,13 +576,6 @@ class Consensus(Helper):
         
         return tuple(haplotype)
 
-    def get_genome(self, genome):
-        output = []
-        for pos, base in sorted(genome.items(), key=lambda q: q[0]):
-            output.append(base)
-        
-        return output
-
         
     def calculate_max_posterior(self, min_value, matrix):
         total_pval = 0.00

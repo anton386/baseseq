@@ -45,6 +45,14 @@ class Helper(object):
                     new_list.append(b2)
             new_dict[b1] = new_list
         return new_dict
+
+    
+    def get_genome(self, genome):
+        output = []
+        for pos, base in sorted(genome.items(), key=lambda q: q[0]):
+            output.append(base)
+
+        return output
     
     def convert_to_str(self, pc_genome_gt):
         return "%.2f" % (pc_genome_gt)

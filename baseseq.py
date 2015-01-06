@@ -121,12 +121,8 @@ class BaseSeq(Helper):
         sys.stderr.write("[%s] Output Haplotype Distribution\n" % (self.get_time(),))
         
         self.ovcf = VCF(self.vcf, crossmap=self.crossmap)
-        #self.ovcf.get_variants(self.consensus.inferred_consensus,
-        #                       self.consensus.consensus_genomes)
-        #self.ovcf.output_vcf(self.consensus.inferred_consensus)
         self.ovcf.get_variants(self.ref.sequence,
-                               self.consensus.consensus_genomes,
-                               self.consensus.consensus_indels)
+                               self.consensus.consensus_genomes)
         self.ovcf.output_vcf(self.ref.sequence)
         sys.stderr.write("[%s] Output VCF\n" % (self.get_time(),))
 
@@ -136,8 +132,7 @@ class BaseSeq(Helper):
         self.ochain = Chain(self.chain)
         self.ochain.output_chain(self.ref,
                                  self.consensus.inferred_consensus,
-                                 self.consensus.inferred_fconsensus,
-                                 self.consensus.inferred_consensus_indels)
+                                 self.consensus.inferred_structure)
         sys.stderr.write("[%s] Output Chain File\n" % (self.get_time(),))
     
     
@@ -199,8 +194,7 @@ class BaseSeq(Helper):
         
         self.ovcf = VCF(self.vcf, crossmap=self.crossmap)
         self.ovcf.get_variants(self.ref.sequence,
-                               self.consensus.consensus_genomes,
-                               self.consensus.consensus_indels)
+                               self.consensus.consensus_genomes)
         self.ovcf.output_vcf(self.ref.sequence)
         sys.stderr.write("[%s] Output VCF\n" % (self.get_time(),))
 
@@ -215,8 +209,7 @@ class BaseSeq(Helper):
         self.ochain = Chain(self.chain)
         self.ochain.output_chain(self.ref,
                                  self.consensus.inferred_consensus,
-                                 self.consensus.inferred_fconsensus,
-                                 self.consensus.inferred_consensus_indels)
+                                 self.consensus.inferred_structure)
         sys.stderr.write("[%s] Output Chain File\n" % (self.get_time(),))
         
     

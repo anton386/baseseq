@@ -24,11 +24,13 @@ class VCF(Helper):
     def format_af(self, i, AN):
         freq = float(i)/float(AN)
         if i == 0:
-            return "%.1f" % (freq,)
-        elif freq >= 0.01:
             return "%.2f" % (freq,)
-        else:
+        elif freq == 1.00:
+            return "%.2f" % (freq,)
+        elif freq >= 0.01:
             return "%.3f" % (freq,)
+        else:
+            return "%.3e" % (freq,)
 
 
     # TODO
@@ -90,8 +92,7 @@ class VCF(Helper):
         # convert genotypes
 
     
-    def get_variants(self, inferred_consensus, consensus_genomes,
-                     consensus_indels):
+    def get_variants(self, inferred_consensus, consensus_genomes):
         
         self.barcodes = sorted(consensus_genomes.keys())
         
@@ -101,7 +102,8 @@ class VCF(Helper):
             # search for all deletions
             del_position = None
             del_dict = {}
-            for no, (x, y) in enumerate(zip(inferred_consensus, cg)):
+            for no, (x, y) in enumerate(zip(inferred_consensus,
+                                            self.get_genome(cg))):
                 if x != y:
                     if y == "D":
                         if del_position == None:
@@ -111,23 +113,21 @@ class VCF(Helper):
                             del_indel.append("-")
                     else:
                         if del_position:
-                            del_dict[del_position] = "-".join(del_indel)
+                            del_dict[del_position] = "".join(del_indel)
                         else:
                             del_position = None
             # last time
             if del_position:
-                del_dict[del_position] = "-".join(del_indel)
+                del_dict[del_position] = "".join(del_indel)
 
             counter = 0
-            for no, (x, y) in enumerate(zip(inferred_consensus, cg)):
+            for no, (x, y) in enumerate(zip(inferred_consensus,
+                                            self.get_genome(cg))):
                 if x != y:
                     if x == "N":
                         continue
-
-                    if y == "I":
-                        pos = no + 1 - 1  # 0-based -> 1-based, and need to include ref/consensus base
-                        var = inferred_consensus[no-1] + consensus_indels[barcode][no+1][0]
-                    elif y == "D":
+                    
+                    if y == "D":
                         try:
                             pos = no + 1 - 1  # 0-based -> 1-based, and need to include ref/consensus base
                             var = inferred_consensus[no-1] + del_dict[no+1]
@@ -155,7 +155,7 @@ class VCF(Helper):
                 self.variants_distribution[counter] += 1
             except:
                 self.variants_distribution[counter] = 1
-        
+    
     
     def output_variants_distribution(self, f_out):
         

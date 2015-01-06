@@ -6,7 +6,7 @@ class Chain(object):
     def __init__(self, chain):
         self.chain = chain
 
-    def output_chain(self, ref, consensus, fconsensus, indels):
+    def output_chain(self, ref, consensus, structure):
 
         #TODO raise exception if reference and consensus are not the same
         
@@ -23,7 +23,7 @@ class Chain(object):
         qsize = len(consensus)
         qstrand = "+"
         qstart = 0
-        qend = len(fconsensus)
+        qend = len(consensus)
         chain_id = 1
 
         f_out.write("\t".join(map(str,
@@ -37,13 +37,14 @@ class Chain(object):
         size = 0
         dt = 0  # diff btw end of block to next block (ref)
         dq = 0  # diff btw end of block to next block (query)
-        for pos, (r, q) in enumerate(zip(ref.sequence, consensus)):
+        for pos, (r, q) in enumerate(zip(ref.sequence, structure["sequence"])):
             position = pos + 1
             
             if q == "D":
                 dq += 1
             elif q == "I":
-                dt += indels[position-1][1]
+                # dt += indels[position-1][1]
+                dt += (len(structure["ins"][position])-1)
             else:
                 size += 1
 
