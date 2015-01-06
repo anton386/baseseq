@@ -35,6 +35,16 @@ class Helper(object):
                 return ["A", "T", "G"]
             else:
                 return []
+
+    def get_all_other_base(self, list_of_bases):
+        new_dict = {}
+        for b1 in list_of_bases:
+            new_list = []
+            for b2 in list_of_bases:
+                if b1 != b2:
+                    new_list.append(b2)
+            new_dict[b1] = new_list
+        return new_dict
     
     def convert_to_str(self, pc_genome_gt):
         return "%.2f" % (pc_genome_gt)
