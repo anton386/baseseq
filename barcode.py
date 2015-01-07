@@ -232,7 +232,7 @@ class BarCode(Helper):
             self.split_bam_by_barcodes_into_fastq(ref, prefix)
 
 
-    def split_bam_by_barcodes_into_bam(self, reg, prefix=""):
+    def split_bam_by_barcodes_into_bam(self, ref, prefix=""):
 
         if not prefix:
             prefix = ""

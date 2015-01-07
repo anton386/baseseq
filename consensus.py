@@ -103,7 +103,7 @@ class Consensus(Helper):
 
     
     def build(self, phred=33, q_threshold=0, q_indel=40,
-              high_quality_threshold=0.15):
+              high_quality_threshold=0.15, debug=None):
         #TODO use EM to estimate haplotype frequencies
         #TODO haplotype imputation
 
@@ -140,9 +140,10 @@ class Consensus(Helper):
 
                 self.check_status_of_barcodes(no_of_barcodes)
                 no_of_barcodes += 1
-
-                ##DEBUG if no_of_barcodes == 100:
-                ##DEBUG     return
+                
+                if debug:
+                    if no_of_barcodes == debug:
+                        return
                 
                 current_barcode = barcode
                 consensus_matrix = self.create_log_matrix()
@@ -502,6 +503,8 @@ class Consensus(Helper):
         f_out.write("##FrequencyDistribution\n")
         for haplotype, counts in sorted(freq_distribution.items(), key=lambda q: q[1], reverse=True):
             f_out.write("%s\t%s\t%s\n" % (haplotype, counts, float(counts)/float(total)))
+
+        self.freq_distribution = freq_distribution
 
         f_out.close()
 

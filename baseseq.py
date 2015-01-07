@@ -9,6 +9,7 @@ from barcode import BarCode
 from consensus import Consensus
 from vcf import VCF
 from chain import Chain
+from quark import Quark
 
 from lib.soma.ref import Reference
 
@@ -22,7 +23,9 @@ class BaseSeq(Helper):
                  vcf=None,
                  chain=None,
                  crossmap=None,
-                 export=None):
+                 export=None,
+                 rank=None,
+                 debug=None):
         
         self.bam = bam
         self.barcodes = barcodes
@@ -38,6 +41,8 @@ class BaseSeq(Helper):
         self.chain = chain
         self.crossmap = crossmap
         self.export = export
+        self.rank = rank
+        self.debug = int(debug)
     
     def get_barcodes(self):
         # simple approach - align, take soft-clipped, and use the arbitrary 20 bases
@@ -108,7 +113,7 @@ class BaseSeq(Helper):
         self.consensus = Consensus(self.rewritten_sorted_bam, self.ref)
         sys.stderr.write("[%s] Starting Consensus Building\n" % (self.get_time(),))
         
-        self.consensus.build()
+        self.consensus.build(debug=self.debug)
         sys.stderr.write("[%s] Built and Calculated Consensus\n" % (self.get_time(),))
         
         self.consensus.infer_consensus(self.consensus_reference)
@@ -119,6 +124,14 @@ class BaseSeq(Helper):
 
         self.consensus.output_haplotype_distribution(self.haplotype_distribution)
         sys.stderr.write("[%s] Output Haplotype Distribution\n" % (self.get_time(),))
+
+        self.quark = Quark(self.ref.sequence)
+        self.quark.distance_matrix(sorted(self.consensus.freq_distribution.items(),
+                                          key=lambda q: q[1],
+                                          reverse=True))
+        self.quark.graph_it()
+        self.quark.rank_it(self.rank)
+        sys.stderr.write("[%s] Output Quark Analysis\n" % (self.get_time(),))
         
         self.ovcf = VCF(self.vcf, crossmap=self.crossmap)
         self.ovcf.get_variants(self.ref.sequence,
@@ -271,13 +284,16 @@ if __name__ == "__main__":
         vcf = sys.argv[9]
         out = sys.argv[10]
         chain = sys.argv[11]
+        rank = sys.argv[12]
+        debug = sys.argv[13]
 
         bs = BaseSeq(bam, rewritten_bam=rewritten_bam,
                      barcodes=barcodes, ref=ref,
                      consensus_reference=consensus_reference,
                      consensus_genomes=consensus_genomes,
                      haplotype_distribution=haplotype_distribution,
-                     vcf=vcf, out=out, chain=chain)
+                     vcf=vcf, out=out, chain=chain, rank=rank,
+                     debug=debug)
         bs.assemble_consensus_genomes()
 
     elif method == "sort_and_rewrite_bam":
